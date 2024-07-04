@@ -21,7 +21,7 @@ Run the script with the appropriate options as detailed below. Make sure to have
 ./BloodHoundAnalyzer.sh [OPTIONS]
 ```
 
-## Options
+### Examples
 
 - `-d, --domain DOMAIN`  
   **Required.** Specify the AD domain to analyze.
@@ -61,16 +61,14 @@ Run the script with the appropriate options as detailed below. Make sure to have
 ./BloodHoundAnalyzer.sh --domain example.com --clean
 ```
 
-## Usage
-
-The script offers these usage cases:
+## Steps
 
 1. **Ingest Data**: If the `--injest` option is provided, the script ingests BloodHound data from the specified path and launches Firefox to view the data.
 
 2. **Run Analysis**: If the `--analyze` option is set, the script runs several analysis tools:
    - **AD-miner**: Generates an AD miner report.
    - **GoodHound**: Runs GoodHound analysis.
-   - **Ransomulator**: Simulates ransomware scenarios.
+   - **Ransomulator**: Runs the ransomulator script.
     - **PlumHound**: Runs PlumHound tasks and short path analyses.
 
 3. **Clean Up**: If the `--clean` option is set, the script stops and deletes the Docker containers associated with the BloodHound instance.
@@ -78,3 +76,10 @@ The script offers these usage cases:
 ## License
 
 This project is licensed under the terms of the MIT license. 
+
+## Acknowledgments
+- https://github.com/Tanguy-Boisset/bloodhound-automation/tree/master
+- https://github.com/Mazars-Tech/AD_Miner
+- https://github.com/PlumHound/PlumHound
+- https://github.com/idnahacks/GoodHound
+-https://github.com/zeronetworks/BloodHound-Tools/blob/main/Ransomulator/ransomulator.py
