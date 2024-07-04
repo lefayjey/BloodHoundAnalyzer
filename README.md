@@ -11,7 +11,7 @@ Before using BloodHoundAnalyzer, ensure you have the following tools installed b
 
 - python3
 - Docker
-- Firefox ESR
+- Firefox
 
 ## Usage
 
@@ -21,7 +21,7 @@ Run the script with the appropriate options as detailed below. Make sure to have
 ./BloodHoundAnalyzer.sh [OPTIONS]
 ```
 
-### Examples
+### Options
 
 - `-d, --domain DOMAIN`  
   **Required.** Specify the AD domain to analyze.
