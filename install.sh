@@ -1,16 +1,14 @@
 #!/bin/bash
 
-data_dir="/opt/BA_tools/"
-sudo mkdir "${data_dir}" 2>/dev/null
-sudo chown -R "$(whoami)":"$(whoami)" "${data_dir}"
+tools_dir="/opt/BA_tools"
+sudo mkdir "${tools_dir}" 2>/dev/null
+sudo chown -R "$(whoami)":"$(whoami)" "${tools_dir}"
 
-git clone https://github.com/Tanguy-Boisset/bloodhound-automation "${data_dir}"/bloodhound-automation
-
+pip3 install py2neo pandas prettytable neo4j tabulate argcomplete alive-progress
+git clone https://github.com/Tanguy-Boisset/bloodhound-automation "${tools_dir}"/bloodhound-automation
+pipx install git+https://github.com/fox-it/bloodhound-import --force
 pipx install git+https://github.com/Mazars-Tech/AD_Miner --force
-
-git clone https://github.com/PlumHound/PlumHound "${data_dir}"/PlumHound
-pip3 install -r "${data_dir}"/PlumHound/requirements.txt
-
-wget https://raw.githubusercontent.com/zeronetworks/BloodHound-Tools/main/Ransomulator/ransomulator.py -O "${data_dir}"/ransomulator.py
-
+git clone https://github.com/PlumHound/PlumHound "${tools_dir}"/PlumHound
+wget https://raw.githubusercontent.com/zeronetworks/BloodHound-Tools/main/Ransomulator/ransomulator.py -O "${tools_dir}"/ransomulator.py
+wget https://raw.githubusercontent.com/kaluche/bloodhound-quickwin/main/bhqc.py -O "${tools_dir}"/bhqc.py
 pipx install git+https://github.com/lefayjey/GoodHound --force
