@@ -13,7 +13,7 @@ Before using BloodHoundAnalyzer, ensure you have the following tools installed:
 - Docker and docker-compose (for BloodHoundCE version)
 - neo4j (for old BloodHound version)
 
-Run the `install.sh` script to install the following BloodHound automation and analysis tools 
+Run the `install.sh` script to install the following BloodHound automation and analysis tools:
   - **bloodhound-automation**: Automates deployment of BloodHoundCE.
   - **AD-miner**: Generates an AD miner report.
   - **GoodHound**: Runs GoodHound analysis.
@@ -58,10 +58,10 @@ chmod +x ./BloodHoundAnalyzer.sh
   Specify the path to the BloodHound ZIP file to import.
 
 - `--import`  
-  Import BloodHound data into the neo4j database.
+  Run import of BloodHound data into the neo4j database.
 
 - `--analyze`  
-  Run analysis tools (AD-miner, GoodHound, Ransomulator, PlumHound) on the imported data.
+  Run analysis tools (AD-miner, GoodHound, Ransomulator, BloodHoundQuickWin, PlumHound) on the imported data.
 
 - `--stop`  
   Stop BloodHoundCE containers or neo4j.
@@ -83,8 +83,7 @@ chmod +x ./BloodHoundAnalyzer.sh
 ### List BloodHoundCE projects
 
 ```bash
-./BloodHoundAnalyzer.sh --start -d example.com
-./BloodHoundAnalyzer.sh --start --old
+./BloodHoundAnalyzer.sh --list
 ```
 
 ### Start BloodHoundCE or old BloodHound
@@ -92,6 +91,13 @@ chmod +x ./BloodHoundAnalyzer.sh
 ```bash
 ./BloodHoundAnalyzer.sh --start -d example.com
 ./BloodHoundAnalyzer.sh --start --old
+```
+
+### Run BloodHound GUI or Firefox with BloodHoundCE web page
+
+```bash
+./BloodHoundAnalyzer.sh --run
+./BloodHoundAnalyzer.sh --run --old
 ```
 
 ### Start BloodHoundCE, Import Data, and Run Analysis
