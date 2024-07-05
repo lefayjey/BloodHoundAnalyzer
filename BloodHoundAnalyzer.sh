@@ -20,9 +20,11 @@ neo4j_port=7474
 web_port=7080
 current_dir=$(pwd)
 output_dir="${current_dir}"
+modules=""
 list_bool=false
 start_bool=false
 run_bool=false
+collect_bool=false
 import_bool=false
 analyze_bool=false
 stop_bool=false
@@ -37,7 +39,7 @@ print_banner() {
       / \/  \ | (_) | (_) | (_| / __  / (_) | |_| | | | | (_| /  _  \ | | | (_| | | |_| |/ /  __/ |   
       \_____/_|\___/ \___/ \__,_\/ /_/ \___/ \__,_|_| |_|\__,_\_/ \_/_| |_|\__,_|_|\__, /___\___|_|   
                                                                                    |___/              
-      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.1 ${NC}
+      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.2 ${NC}
       https://github.com/lefayjey/BloodHoundAnalyzer
       ${BLUE}Author: ${CYAN}lefayjey${NC}
 "
@@ -46,17 +48,24 @@ print_banner() {
 print_help() {
     print_banner
     echo -e "${YELLOW}Parameters${NC}"
-    echo -e "-d/--domain DOMAIN          Specify the AD domain to analyze (required for BloodHoundCE)."
+    echo -e "-d/--domain DOMAIN          Specify the AD domain to analyze (required for BloodHoundCE and for Collection)."
+    echo -e "-u/--username               Username (required for Collection only)."
+    echo -e "-p/--password               Password - NTLM authentication (required for Collection only)."
+    echo -e "-H/--hash                   LM:NT - NTLM authentication (required for Collection only)."
+    echo -e "-K/--kerb                   Location to Kerberos ticket './krb5cc_ticket' - Kerberos authentication (required for Collection only)."
+    echo -e "-A/--aes                    AES Key - Kerberos authentication (required for Collection only)."
+    echo -e "--dc                        IP Address of Target Domain Controller (required for Collection only)."
     echo -e "-o/--output OUTPUT_DIR      Specify the directory where analysis results will be saved. Defaults to the current directory."
-    echo -e "--all                       Run all steps (List, Start, Run, Import, Analyze, Stop and Clean)."
-    echo -e "--list                      List available projects (only for BloodHoundCE)."
-    echo -e "--start                     Start BloodHoundCE containers or neo4j."
-    echo -e "--run                       Run BloodHound GUI or Firefox with BloodHoundCE webpage."
     echo -e "-D/--data DATA_PATH         Specify the path to the BloodHound ZIP file to import"
-    echo -e "--import                    Import BloodHound data into the neo4j database."
-    echo -e "--analyze                   Run analysis tools (AD-miner, GoodHound, Ransomulator, PlumHound) on the imported data."
-    echo -e "--stop                      Stop BloodHoundCE containers or neo4j."
-    echo -e "--clean                     Stop and delete BloodHoundCE containers (only for BloodHoundCE)."
+    echo -e "-M/--module MODULES         Comma separated modules to execute between: collect, list, start, run, import, analyze, stop, clean"
+    echo -e "                                 ${YELLOW}collect${NC}: Run bloodHound-python to collect Active Directory data."
+    echo -e "                                 ${YELLOW}list${NC}: List available projects (only for BloodHoundCE)."
+    echo -e "                                 ${YELLOW}start${NC}: Start BloodHoundCE containers or neo4j."
+    echo -e "                                 ${YELLOW}run${NC}: Run BloodHound GUI or Firefox with BloodHoundCE webpage."
+    echo -e "                                 ${YELLOW}import${NC}: Import BloodHound data into the neo4j database."
+    echo -e "                                 ${YELLOW}analyze${NC}: Run analysis tools (AD-miner, GoodHound, Ransomulator, PlumHound) on the imported data."
+    echo -e "                                 ${YELLOW}stop${NC}: Stop BloodHoundCE containers or neo4j."
+    echo -e "                                 ${YELLOW}clean${NC}: Stop and delete BloodHoundCE containers (only for BloodHoundCE)."
     echo -e "--old                       Use the old version of BloodHound."
     echo -e "--oldpass                   Specify neo4j password for the old version of BloodHound."
     echo -e "-h/--help                   Display the help message."
@@ -70,55 +79,42 @@ while test $# -gt 0; do
         domain="${2}"
         shift
         ;;
+    -u | --username)
+        username="${2}"
+        shift
+        ;;
+    -p | --password)
+        creds="-p '${2}' --auth-method ntlm"
+        shift
+        ;;
+    -H | --hash)
+        creds="--hashes '${2}' --auth-method ntlm"
+        shift
+        ;;
+    -K | --kerb)
+        export KRB5CCNAME="${2}"
+        creds="-k -no-pass -p '' --auth-method kerberos"
+        shift
+        ;;
+    -A | --aes)
+        creds="-aesKey ${2} --auth-method kerberos"
+        shift
+        ;;
+    --dc)
+        dc="${2}"
+        shift
+        ;;
     -o | --output)
         output_dir="$(realpath "${2}")"
         shift
         ;;
-    --all)
-        list_bool=true
-        start_bool=true
-        run_bool=true
-        import_bool=true
-        analyze_bool=true
-        stop_bool=true
-        clean_bool=true
-        args+=("$1")
-        ;;
-    --list)
-        list_bool=true
-        args+=("$1")
-        ;;
-    --start)
-        start_bool=true
-        args+=("$1")
-        ;;
-    --run)
-        start_bool=true
-        run_bool=true
-        args+=("$1")
+    -M | --modules)
+        modules="${2}"
+        shift
         ;;
     -D | --data)
         bhd_data="$(realpath "${2}")"
         shift
-        ;;
-    --import)
-        import_bool=true
-        start_bool=true
-        args+=("$1")
-        ;;
-    --analyze)
-        analyze_bool=true
-        start_bool=true
-        args+=("$1")
-        ;;
-    --stop)
-        stop_bool=true
-        args+=("$1")
-        ;;
-    --clean)
-        clean_bool=true
-        stop_bool=true
-        args+=("$1")
         ;;
     --old)
         bhdce_bool=false
@@ -142,20 +138,77 @@ while test $# -gt 0; do
 done
 set -- "${args[@]}"
 
-if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ] && { [ "${start_bool}" == true ] || [ "${import_bool}" == true ] || [ "${analyze_bool}" == true ] || [ "${stop_bool}" == true ] || [ "${clean_bool}" == true ]; }; then
-    echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+if [ -z "${modules}" ]; then
+    echo -e "${RED}[BloodHoundAnalyzer]${NC} Please specify one or more of the following modules: collect, list, start, run, import, analyze, stop, clean"
     exit 1
 fi
 
-if [ -z "${bhd_data}" ] && [ "${import_bool}" == true ]; then
-    echo -e "${RED}[BloodHoundAnalyzer]${NC} BloodHound zip file not specified"
-    exit 1
-fi
+for m in ${modules//,/ }; do
+    case $m in
+    collect)
+        if [ -z "${domain}" ] || [ -z "${username}" ] || [ -z "${creds}" ] || [ -z "${dc}" ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain, DC IP, username or credentials not specified"
+            exit 1
+        fi
+        collect_bool=true
+        ;;
+    list)
+        list_bool=true
+        ;;
+    start)
+        if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+            exit 1
+        fi
+        start_bool=true
+        ;;
+    run)
+        start_bool=true
+        run_bool=true
+        ;;
+    import)
+        if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+            exit 1
+        fi
+        if [ -z "${bhd_data}" ] && [ "${collect_bool}" == false ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} BloodHound zip file not specified"
+            exit 1
+        fi
+        import_bool=true
+        start_bool=true
+        ;;
+    analyze)
+        if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+            exit 1
+        fi
+        analyze_bool=true
+        start_bool=true
+        ;;
+    stop)
+        if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+            exit 1
+        fi
+        stop_bool=true
+        ;;
+    clean)
+        if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+            exit 1
+        fi
+        clean_bool=true
+        stop_bool=true
+        ;;
+    *)
+        echo -e "${RED}[-] Unknown module $m... ${NC}"
+        exit 1
+        ;;
+    esac
+done
 
-if [ "${list_bool}" == false ] && [ "${start_bool}" == false ] && [ "${import_bool}" == false ] && [ "${analyze_bool}" == false ] && [ "${stop_bool}" == false ] && [ "${clean_bool}" == false ]; then
-    echo -e "${RED}[BloodHoundAnalyzer]${NC} Please specify one or more of the following: --list, --start, --inject BloodHound_ZIP, --analyze, --stop, --clean"
-    exit 1
-fi
+mkdir -p "${output_dir}"
 
 if [ "${list_bool}" == true ]; then
     if [ "${bhdce_bool}" == false ]; then
@@ -170,13 +223,21 @@ if [ "${list_bool}" == true ]; then
 fi
 
 if [ "${start_bool}" == true ]; then
+    bolt_port_open=$(nc -z 127.0.0.1 7687; echo $?)
+    neo4j_port_open=$(nc -z 127.0.0.1 7474; echo $?)
+    web_port_open=$(nc -z 127.0.0.1 7080; echo $?)
+    if [ "${bolt_port_open}" == "0" ] || [ "${neo4j_port_open}" == "0" ] || [ "${web_port_open}" == "0" ]; then
+        echo -e "${YELLOW}[BloodHoundAnalyzer START]${NC} Warning! neo4j already running. Press Enter to continue..."
+        read -rp "" </dev/tty
+    fi
     if [ "${bhdce_bool}" == false ]; then
         echo -e "${GREEN}[BloodHoundAnalyzer START]${NC} Starting neo4j"
         sudo neo4j start 2>&1 &
+        sleep 2
     else
         cd "${tools_dir}"/bloodhound-automation/ || exit
         echo -e "${GREEN}[BloodHoundAnalyzer START]${NC} Deploying BloodHound containers"
-        sudo python3 bloodhound-automation.py start -bp "${bolt_port}" -np "${neo4j_port}" -wp "${web_port}" "${domain}"
+        sudo python3 bloodhound-automation.py start -bp "${bolt_port}" -np "${neo4j_port}" -wp "${web_port}" "${domain}" 2>/dev/null
         cd "${current_dir}" || exit
     fi
     echo -e ""
@@ -184,14 +245,36 @@ fi
 
 if [ "${run_bool}" == true ]; then
     if [ "${bhdce_bool}" == false ]; then
-        sleep 10
         echo -e "${GREEN}[BloodHoundAnalyzer RUN]${NC} Running BloodHound"
         bloodhound --no-sandbox >/dev/null 2>&1 &
     else
-        sleep 5
-        echo -e "${GREEN}[BloodHoundAnalyzer START]${NC} Running Firefox"
+        sleep 3
+        echo -e "${GREEN}[BloodHoundAnalyzer RUN]${NC} Running Firefox"
         firefox-esr http://127.0.0.1:"${web_port}" >/dev/null 2>&1 &
     fi
+    echo -e ""
+fi
+
+if [ "${collect_bool}" == true ]; then
+    echo -e "${GREEN}[BloodHoundAnalyzer COLLECT]${NC} Running BloodHound Collection"
+    cd "${output_dir}" || exit
+    if [ "${bhdce_bool}" == false ]; then
+        eval bloodhound-python -d "${domain}" -u "${username}\\@${domain}" "${creds}" -c all,LoggedOn -ns "${dc}" --dns-timeout 5 --dns-tcp --zip | tee "${output_dir}/bloodhound_output_${domain}.txt"
+    else
+        eval bloodhound-python_ce -d "${domain}" "-u ${username}\\@${domain}" "${creds}" -c all,LoggedOn -ns "${dc}" --dns-timeout 5 --dns-tcp --zip | tee "${output_dir}/bloodhoundce_output_${domain}.txt"
+    fi
+    bhd_data_new="$(find "${output_dir}" -type f -name '*_bloodhound.zip' -print -quit)"
+    if [ -n "${bhd_data_new}" ]; then
+        if [ "${import_bool}" == true ]; then
+            echo -e "${GREEN}[BloodHoundAnalyzer COLLECT]${NC} Choosing collected BloodHound Data"
+            bhd_data="${bhd_data_new}"
+        else
+            echo -e "${GREEN}[BloodHoundAnalyzer COLLECT]${NC} BloodHound Data collected successfully"
+        fi
+    else
+        echo -e "${GREEN}[BloodHoundAnalyzer COLLECT]${NC} Error collecting BloodHound Data"
+    fi
+    cd "${current_dir}" || exit
     echo -e ""
 fi
 
@@ -230,8 +313,6 @@ if [ "${analyze_bool}" == true ]; then
         done
     fi
 
-    mkdir -p "${output_dir}/PlumHound_${domain}"
-    mkdir -p "${output_dir}/GoodHound_${domain}"
     cd "${output_dir}" || exit
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running AD-miner"
@@ -241,6 +322,7 @@ if [ "${analyze_bool}" == true ]; then
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running GoodHound"
+    mkdir -p "${output_dir}/GoodHound_${domain}"
     GoodHound -s bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -d "${output_dir}/GoodHound_${domain}" --patch41
     rm -rf "${output_dir}"/goodhound.db 2>/dev/null
     echo -e ""
@@ -254,6 +336,7 @@ if [ "${analyze_bool}" == true ]; then
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running PlumHound"
+    mkdir -p "${output_dir}/PlumHound_${domain}"
     cd "${tools_dir}"/PlumHound/ || exit
     python3 PlumHound.py -x tasks/default.tasks -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -v 0 --op "${output_dir}/PlumHound_${domain}"
     python3 PlumHound.py -bp short 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
@@ -288,3 +371,5 @@ if [ "${clean_bool}" == true ]; then
     fi
     echo -e ""
 fi
+
+echo -e "${BLUE}[BloodHoundAnalyzer]${NC} All modules complete!"

@@ -5,6 +5,8 @@ sudo mkdir "${tools_dir}" 2>/dev/null
 sudo chown -R "$(whoami)":"$(whoami)" "${tools_dir}"
 
 pip3 install py2neo pandas prettytable neo4j tabulate argcomplete alive-progress
+pipx install git+https://github.com/dirkjanm/bloodhound.py --force
+pipx install "git+https://github.com/dirkjanm/BloodHound.py@bloodhound-ce" --force --suffix '_ce'
 git clone https://github.com/Tanguy-Boisset/bloodhound-automation "${tools_dir}"/bloodhound-automation
 pipx install git+https://github.com/fox-it/bloodhound-import --force
 pipx install git+https://github.com/Mazars-Tech/AD_Miner --force

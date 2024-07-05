@@ -14,6 +14,7 @@ Before using BloodHoundAnalyzer, ensure you have the following tools installed:
 - neo4j (for old BloodHound version)
 
 Run the `install.sh` script to install the following BloodHound automation and analysis tools:
+  - **bloodhound-python**: Collects Active Directory data.
   - **bloodhound-automation**: Automates deployment of BloodHoundCE.
   - **AD-miner**: Generates an AD miner report.
   - **GoodHound**: Runs GoodHound analysis.
@@ -37,37 +38,42 @@ chmod +x ./BloodHoundAnalyzer.sh
 ### Options
 
 - `-d, --domain DOMAIN`  
-  Specify the AD domain to analyze (required for BloodHoundCE).
+  Specify the AD domain to analyze (required for BloodHoundCE and for Collection).
+
+- `-u, --username`  
+  Username (required for Collection only).
+
+- `-p, -.password`  
+  Password - NTLM authentication (required for Collection only).
+
+- `-H, --hash`  
+  LM:NT - NTLM authentication (required for Collection only).
+
+- `-K, --kerb`  
+  Location to Kerberos ticket './krb5cc_ticket' - Kerberos authentication (required for Collection only).
+
+- `-A, --aes`  
+  AES Key - Kerberos authentication (required for Collection only).
+
+- `--dc`  
+  IP Address of Target Domain Controller (required for Collection only)."
 
 - `-o, --output OUTPUT_DIR`  
   Specify the directory where analysis results will be saved. Defaults to the current directory.
 
-- `--all`  
-  Run all steps (List, Start, Run, Import, Analyze, Stop and Clean).
-
-- `--list`  
-  List available projects (only for BloodHoundCE).
-
-- `--start`  
-  Start BloodHoundCE containers or neo4j.
-
-- `--run`  
-  Run BloodHound GUI or Firefox with BloodHoundCE webpage.
-
-- `--data DATA_PATH`  
+- `-D, --data DATA_PATH`  
   Specify the path to the BloodHound ZIP file to import.
 
-- `--import`  
-  Run import of BloodHound data into the neo4j database.
-
-- `--analyze`  
-  Run analysis tools (AD-miner, GoodHound, Ransomulator, BloodHoundQuickWin, PlumHound) on the imported data.
-
-- `--stop`  
-  Stop BloodHoundCE containers or neo4j.
-
-- `--clean`  
-  Stop and delete BloodHoundCE containers (only for BloodHoundCE).
+- `-M, --modules MODULES`  
+  Comma separated modules to execute between:  
+    - **collect:** Run bloodHound-python to collect Active Directory data.  
+    - **list** : List available projects (only for BloodHoundCE).  
+    - **start** : Start BloodHoundCE containers or neo4j.  
+    - **run** : Run BloodHound GUI or Firefox with BloodHoundCE webpage.  
+    - **import** : Import BloodHound data into the neo4j database.  
+    - **analyze** : Run analysis tools (AD-miner, GoodHound, Ransomulator, PlumHound) on the imported data.  
+    - **stop** : Stop BloodHoundCE containers or neo4j.  
+    - **clean** : Stop and delete BloodHoundCE containers (only for BloodHoundCE).  
 
 - `--old`  
   Use the old version of BloodHound.
@@ -80,49 +86,57 @@ chmod +x ./BloodHoundAnalyzer.sh
 
 ## Examples
 
+### Collect Active Directory data
+
+```bash
+./BloodHoundAnalyzer.sh -M collect -d example.com -u user -p password
+```
+
 ### List BloodHoundCE projects
 
 ```bash
-./BloodHoundAnalyzer.sh --list
+./BloodHoundAnalyzer.sh -M list
 ```
 
-### Start BloodHoundCE or old BloodHound
+### Start BloodHoundCE containers or old BloodHound's neo4j
 
 ```bash
-./BloodHoundAnalyzer.sh --start -d example.com
-./BloodHoundAnalyzer.sh --start --old
+./BloodHoundAnalyzer.sh -M start -d example.com
+./BloodHoundAnalyzer.sh -M start --old
 ```
 
 ### Run BloodHound GUI or Firefox with BloodHoundCE web page
 
 ```bash
-./BloodHoundAnalyzer.sh --run
-./BloodHoundAnalyzer.sh --run --old
+./BloodHoundAnalyzer.sh -M run
+./BloodHoundAnalyzer.sh -M run --old
 ```
 
-### Start BloodHoundCE, Import Data, and Run Analysis
+### Start BloodHound, and Run Analysis on imported data
 
 ```bash
-./BloodHoundAnalyzer.sh -d example.com --import /path/to/bloodhound/data.zip --analyze -o /path/to/output
+./BloodHoundAnalyzer.sh -M analyze -d example.com -o /path/to/output
+./BloodHoundAnalyzer.sh -M analyze --old -o /path/to/output
 ```
 
-### Start old BloodHound and Run Analysis
+### Start BloodHound, Import Data, and Run Analysis
 
 ```bash
-./BloodHoundAnalyzer.sh --import /path/to/bloodhound/data.zip --old -o /path/to/output
+./BloodHoundAnalyzer.sh -M import,analyze -d example.com --data /path/to/bloodhound/data.zip -o /path/to/output
+./BloodHoundAnalyzer.sh -M import,analyze --data /path/to/bloodhound/data.zip --old -o /path/to/output
 ```
 
-### Stop BloodHoundCE or old BloodHound
+### Stop BloodHound
 
 ```bash
-./BloodHoundAnalyzer.sh --stop -d example.com
-./BloodHoundAnalyzer.sh --stop --old
+./BloodHoundAnalyzer.sh -M stop -d example.com
+./BloodHoundAnalyzer.sh -M stop --old
 ```
 
 ### Clean up BloodHoundCE Containers
 
 ```bash
-./BloodHoundAnalyzer.sh -d example.com --clean
+./BloodHoundAnalyzer.sh -M clean -d example.com
 ```
 
 ## License
@@ -130,6 +144,7 @@ chmod +x ./BloodHoundAnalyzer.sh
 This project is licensed under the terms of the MIT license. 
 
 ## Acknowledgments
+- https://github.com/dirkjanm/BloodHound.py
 - https://github.com/Tanguy-Boisset/bloodhound-automation
 - https://github.com/Mazars-Tech/AD_Miner
 - https://github.com/PlumHound/PlumHound
