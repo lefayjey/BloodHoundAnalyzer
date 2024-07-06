@@ -175,12 +175,20 @@ for m in ${modules//,/ }; do
             echo -e "${RED}[BloodHoundAnalyzer]${NC} BloodHound zip file not specified"
             exit 1
         fi
+        if [ -z "${neo4j_pass}" ] && [ "${bhdce_bool}" == false ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Neo4j password not specified"
+            exit 1
+        fi
         import_bool=true
         start_bool=true
         ;;
     analyze)
-        if [ -z "${domain}" ] && [ "${bhdce_bool}" == true ]; then
+        if [ -z "${domain}" ]; then
             echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
+            exit 1
+        fi
+        if [ -z "${neo4j_pass}" ] && [ "${bhdce_bool}" == false ]; then
+            echo -e "${RED}[BloodHoundAnalyzer]${NC} Neo4j password not specified"
             exit 1
         fi
         analyze_bool=true
@@ -223,9 +231,18 @@ if [ "${list_bool}" == true ]; then
 fi
 
 if [ "${start_bool}" == true ]; then
-    bolt_port_open=$(nc -z 127.0.0.1 7687; echo $?)
-    neo4j_port_open=$(nc -z 127.0.0.1 7474; echo $?)
-    web_port_open=$(nc -z 127.0.0.1 7080; echo $?)
+    bolt_port_open=$(
+        nc -z 127.0.0.1 7687
+        echo $?
+    )
+    neo4j_port_open=$(
+        nc -z 127.0.0.1 7474
+        echo $?
+    )
+    web_port_open=$(
+        nc -z 127.0.0.1 7080
+        echo $?
+    )
     if [ "${bolt_port_open}" == "0" ] || [ "${neo4j_port_open}" == "0" ] || [ "${web_port_open}" == "0" ]; then
         echo -e "${YELLOW}[BloodHoundAnalyzer START]${NC} Warning! neo4j already running. Press Enter to continue..."
         read -rp "" </dev/tty
@@ -279,39 +296,24 @@ if [ "${collect_bool}" == true ]; then
 fi
 
 if [ "${import_bool}" == true ]; then
-    if [ "${bhdce_bool}" == false ]; then
-        echo -e "${GREEN}[BloodHoundAnalyzer IMPORT]${NC} Importing data"
-        while [ "${neo4j_pass}" == "" ]; do
-            echo -e "${YELLOW}[BloodHoundAnalyzer IMPORT]${NC} Please specify password of neo4j:"
-            echo -e "${RED}Invalid password.${NC} Please specify password of neo4j:"
-            read -rp ">> " neo4j_pass </dev/tty
-        done
-        bloodhound-import -du "${neo4j_user}" -dp "${neo4j_pass}" "${bhd_data}"
-    else
-        if [ -n "${bhd_data}" ]; then
+    if [ -n "${bhd_data}" ]; then
+        if [ "${bhdce_bool}" == false ]; then
+            echo -e "${GREEN}[BloodHoundAnalyzer IMPORT]${NC} Importing data"
+            bloodhound-import -du "${neo4j_user}" -dp "${neo4j_pass}" "${bhd_data}"
+        else
             cd "${tools_dir}"/bloodhound-automation/ || exit
             echo -e "${GREEN}[BloodHoundAnalyzer IMPORT]${NC} Importing data"
             sudo python3 bloodhound-automation.py data -z "${bhd_data}" "${domain}"
             cd "${current_dir}" || exit
-        else
-            echo -e "${RED}[BloodHoundAnalyzer IMPORT]${NC} BloodHound ZIP file not found"
-            exit 1
         fi
+    else
+        echo -e "${RED}[BloodHoundAnalyzer IMPORT]${NC} BloodHound ZIP file not found"
+        exit 1
     fi
     echo -e ""
 fi
 
 if [ "${analyze_bool}" == true ]; then
-    if [ "${bhdce_bool}" == false ]; then
-        while [ "${neo4j_pass}" == "" ]; do
-            echo -e "${YELLOW}[BloodHoundAnalyzer ANALYZE]${NC} Please specify password of neo4j:"
-            read -rp ">> " neo4j_pass </dev/tty
-        done
-        while [ "${domain}" == "" ]; do
-            echo -e "${YELLOW}[BloodHoundAnalyzer ANALYZE]${NC} Please specify domain:"
-            read -rp ">> " domain </dev/tty
-        done
-    fi
 
     cd "${output_dir}" || exit
 
