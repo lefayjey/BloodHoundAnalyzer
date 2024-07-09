@@ -339,7 +339,7 @@ if [ "${analyze_bool}" == true ]; then
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running PlumHound"
     mkdir -p "${output_dir}/PlumHound_${domain}"
-    cd "${tools_dir}"/PlumHound/ || exit
+    cd "${tools_dir}"/PlumHound-master/ || exit
     python3 PlumHound.py -x tasks/default.tasks -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -v 0 --op "${output_dir}/PlumHound_${domain}"
     python3 PlumHound.py -bp short 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
     python3 PlumHound.py -bp all 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
