@@ -3,7 +3,7 @@
 tools_dir="/opt/BA_tools"
 sudo mkdir "${tools_dir}" 2>/dev/null
 sudo chown -R "$(whoami)":"$(whoami)" "${tools_dir}"
-sudo apt install docker-cli
+sudo apt install docker.io
 
 python3 -m venv "${tools_dir}/.venv"
 source "${tools_dir}/.venv/bin/activate"
