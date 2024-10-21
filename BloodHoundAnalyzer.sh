@@ -30,6 +30,7 @@ analyze_bool=false
 stop_bool=false
 clean_bool=false
 bhdce_bool=true
+python3="${tools_dir}/.venv/bin/python3"
 
 print_banner() {
     echo -e "
@@ -39,7 +40,7 @@ print_banner() {
       / \/  \ | (_) | (_) | (_| / __  / (_) | |_| | | | | (_| /  _  \ | | | (_| | | |_| |/ /  __/ |   
       \_____/_|\___/ \___/ \__,_\/ /_/ \___/ \__,_|_| |_|\__,_\_/ \_/_| |_|\__,_|_|\__, /___\___|_|   
                                                                                    |___/              
-      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.2 ${NC}
+      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.3 ${NC}
       https://github.com/lefayjey/BloodHoundAnalyzer
       ${BLUE}Author: ${CYAN}lefayjey${NC}
 "
@@ -224,7 +225,7 @@ if [ "${list_bool}" == true ]; then
     else
         cd "${tools_dir}"/bloodhound-automation/ || exit
         echo -e "${GREEN}[BloodHoundAnalyzer LIST]${NC} Listing deployed projects"
-        sudo python3 bloodhound-automation.py list
+        sudo ${python3} bloodhound-automation.py list
         cd "${current_dir}" || exit
     fi
     echo -e ""
@@ -254,7 +255,7 @@ if [ "${start_bool}" == true ]; then
     else
         cd "${tools_dir}"/bloodhound-automation/ || exit
         echo -e "${GREEN}[BloodHoundAnalyzer START]${NC} Deploying BloodHound containers"
-        sudo python3 bloodhound-automation.py start -bp "${bolt_port}" -np "${neo4j_port}" -wp "${web_port}" "${domain}" 2>/dev/null
+        sudo ${python3} bloodhound-automation.py start -bp "${bolt_port}" -np "${neo4j_port}" -wp "${web_port}" "${domain}" 2>/dev/null
         cd "${current_dir}" || exit
     fi
     echo -e ""
@@ -303,7 +304,7 @@ if [ "${import_bool}" == true ]; then
         else
             cd "${tools_dir}"/bloodhound-automation/ || exit
             echo -e "${GREEN}[BloodHoundAnalyzer IMPORT]${NC} Importing data"
-            sudo python3 bloodhound-automation.py data -z "${bhd_data}" "${domain}"
+            sudo ${python3} bloodhound-automation.py data -z "${bhd_data}" "${domain}"
             cd "${current_dir}" || exit
         fi
     else
@@ -330,19 +331,19 @@ if [ "${analyze_bool}" == true ]; then
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running BloodHoundQuickWin"
-    python3 "${tools_dir}/bhqc.py" -u "${neo4j_user}" -p "${neo4j_pass}" -d "${domain}" --heavy -b bolt://127.0.0.1:"${bolt_port}" | tee "${output_dir}/bhqc_${domain}.txt"
+    ${python3} "${tools_dir}/bhqc.py" -u "${neo4j_user}" -p "${neo4j_pass}" -d "${domain}" --heavy -b bolt://127.0.0.1:"${bolt_port}" | tee "${output_dir}/bhqc_${domain}.txt"
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running Ransomulator"
-    python3 "${tools_dir}/ransomulator.py" -o "ransomulator_${domain}" -l bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -w 12
+    ${python3} "${tools_dir}/ransomulator.py" -o "ransomulator_${domain}" -l bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -w 12
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running PlumHound"
     mkdir -p "${output_dir}/PlumHound_${domain}"
     cd "${tools_dir}"/PlumHound-master/ || exit
-    python3 PlumHound.py -x tasks/default.tasks -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -v 0 --op "${output_dir}/PlumHound_${domain}"
-    python3 PlumHound.py -bp short 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
-    python3 PlumHound.py -bp all 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
+    ${python3} PlumHound.py -x tasks/default.tasks -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -v 0 --op "${output_dir}/PlumHound_${domain}"
+    ${python3} PlumHound.py -bp short 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
+    ${python3} PlumHound.py -bp all 5 -s "bolt://127.0.0.1:${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" --op "${output_dir}/PlumHound_${domain}"
     echo -e ""
 
     cd "${current_dir}" || exit
@@ -368,7 +369,7 @@ if [ "${clean_bool}" == true ]; then
     else
         cd "${tools_dir}"/bloodhound-automation/ || exit
         echo -e "${GREEN}[BloodHoundAnalyzer CLEAN]${NC} Deleting Docker containers and project file"
-        sudo python3 bloodhound-automation.py delete "${domain}" 2>/dev/null
+        sudo ${python3} bloodhound-automation.py delete "${domain}" 2>/dev/null
         cd "${current_dir}" || exit
     fi
     echo -e ""
