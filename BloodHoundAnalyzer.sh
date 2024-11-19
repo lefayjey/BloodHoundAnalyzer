@@ -19,7 +19,7 @@ bolt_port=7687
 neo4j_port=7474
 web_port=7080
 current_dir=$(pwd)
-output_dir="${current_dir}"
+output_dir="${current_dir}/output"
 modules=""
 list_bool=false
 start_bool=false
@@ -40,7 +40,7 @@ print_banner() {
       / \/  \ | (_) | (_) | (_| / __  / (_) | |_| | | | | (_| /  _  \ | | | (_| | | |_| |/ /  __/ |   
       \_____/_|\___/ \___/ \__,_\/ /_/ \___/ \__,_|_| |_|\__,_\_/ \_/_| |_|\__,_|_|\__, /___\___|_|   
                                                                                    |___/              
-      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.3 ${NC}
+      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.4 ${NC}
       https://github.com/lefayjey/BloodHoundAnalyzer
       ${BLUE}Author: ${CYAN}lefayjey${NC}
 "
@@ -245,7 +245,7 @@ if [ "${start_bool}" == true ]; then
         echo $?
     )
     if [ "${bolt_port_open}" == "0" ] || [ "${neo4j_port_open}" == "0" ] || [ "${web_port_open}" == "0" ]; then
-        echo -e "${YELLOW}[BloodHoundAnalyzer START]${NC} Warning! neo4j already running. Press Enter to continue..."
+        echo -e "${YELLOW}[BloodHoundAnalyzer START]${NC} Warning! neo4j already running. Press Enter to continue or CTRL-C to exit..."
         read -rp "" </dev/tty
     fi
     if [ "${bhdce_bool}" == false ]; then
@@ -335,7 +335,7 @@ if [ "${analyze_bool}" == true ]; then
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running Ransomulator"
-    ${python3} "${tools_dir}/ransomulator.py" -o "ransomulator_${domain}" -l bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -w 12
+    ${python3} "${tools_dir}/ransomulator.py" -o "ransomulator_${domain}.txt" -l bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -w 12
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running PlumHound"
