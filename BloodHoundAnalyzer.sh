@@ -40,7 +40,7 @@ print_banner() {
       / \/  \ | (_) | (_) | (_| / __  / (_) | |_| | | | | (_| /  _  \ | | | (_| | | |_| |/ /  __/ |   
       \_____/_|\___/ \___/ \__,_\/ /_/ \___/ \__,_|_| |_|\__,_\_/ \_/_| |_|\__,_|_|\__, /___\___|_|   
                                                                                    |___/              
-      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.4 ${NC}
+      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 0.5 ${NC}
       https://github.com/lefayjey/BloodHoundAnalyzer
       ${BLUE}Author: ${CYAN}lefayjey${NC}
 "
@@ -326,8 +326,7 @@ if [ "${analyze_bool}" == true ]; then
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running GoodHound"
     mkdir -p "${output_dir}/GoodHound_${domain}"
-    GoodHound -s bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -d "${output_dir}/GoodHound_${domain}" --patch41
-    rm -rf "${output_dir}"/goodhound.db 2>/dev/null
+    GoodHound -s bolt://127.0.0.1:"${bolt_port}" -u "${neo4j_user}" -p "${neo4j_pass}" -d "${output_dir}/GoodHound_${domain}" --db-skip --patch41
     echo -e ""
 
     echo -e "${GREEN}[BloodHoundAnalyzer ANALYZE]${NC} Running BloodHoundQuickWin"
@@ -356,9 +355,9 @@ if [ "${stop_bool}" == true ]; then
     else
         echo -e "${GREEN}[BloodHoundAnalyzer STOP]${NC} Stopping Docker containers"
         container_name="${domain/\./}"
-        sudo docker container stop "${container_name}"_graph-db_1 2>/dev/null
-        sudo docker container stop "${container_name}"_app-db_1 2>/dev/null
-        sudo docker container stop "${container_name}"_bloodhound_1 2>/dev/null
+        sudo docker container stop "${container_name}"-graph-db-1 2>/dev/null
+        sudo docker container stop "${container_name}"-app-db-1 2>/dev/null
+        sudo docker container stop "${container_name}"-bloodhound-1 2>/dev/null
     fi
     echo -e ""
 fi
