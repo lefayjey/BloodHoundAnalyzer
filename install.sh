@@ -23,9 +23,9 @@ wget https://github.com/SpecterOps/bloodhound-cli/releases/latest/download/blood
 tar -xvzf "${tools_dir}"/bloodhound-cli-linux-amd64.tar.gz -C "${tools_dir}"
 chmod +x "${tools_dir}"/bloodhound-cli
 
-pipx_install_or_upgrade git+https://github.com/Mazars-Tech/AD_Miner
+pipx_install_or_upgrade git+https://github.com/Mazars-Tech/AD_Miner AD_Miner
 wget https://github.com/PlumHound/PlumHound/archive/refs/heads/master.zip -O "${tools_dir}"/PlumHound.zip
 unzip -o "${tools_dir}"/PlumHound.zip -d "${tools_dir}"
 wget https://raw.githubusercontent.com/zeronetworks/BloodHound-Tools/main/Ransomulator/ransomulator.py -O "${tools_dir}"/ransomulator.py
 wget https://raw.githubusercontent.com/kaluche/bloodhound-quickwin/main/bhqc.py -O "${tools_dir}"/bhqc.py
-pipx_install_or_upgrade git+https://github.com/idnahacks/GoodHound
+pipx_install_or_upgrade git+https://github.com/idnahacks/GoodHound GoodHound
