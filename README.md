@@ -3,32 +3,42 @@
 
 ## Overview
 
-BloodHoundAnalyzer is a bash script designed to automate the collection, deployment, import, and analysis of BloodHound, an Active Directory (AD) security tool. This script facilitates the collection of BloodHound data, setup and teardown of a BloodHound instance, import of data, and running various analysis tools on the collected data.
+BloodHoundAnalyzer is a bash script designed to automate the deployment, data import, and analysis of BloodHound CE (Community Edition), an Active Directory (AD) security tool. This script facilitates the setup and management of BloodHound CE containers, import of data, and running various analysis tools on the collected data.
+
+## Features
+
+- **Multi-Domain Support**: Deploy separate BloodHound CE instances for different domains
+- **Automated Container Management**: Start, stop, and clean BloodHound CE containers with custom naming
+- **Custom Port Configuration**: Configure custom ports for Neo4j and BloodHound web interface
+- **Automatic Password Management**: Automatically reset admin password to a standard password
+- **Multiple Data Import Formats**: Import .zip files, .json files, or folders containing JSON files
+- **Integrated Analysis Tools**: Run AD-miner, GoodHound, Ransomulator, and BloodHound QuickWin
+- **Project Listing**: View all deployed BloodHound projects and their status
 
 ## Prerequisites
 
-Before using BloodHoundAnalyzer, ensure you have the following tools installed:
+Before using BloodHoundAnalyzer, ensure you have the following installed:
 
-- python3
-- docker and docker-compose (for BloodHoundCE version)
-- neo4j (for old BloodHound version)
+- **Python 3** with venv support
+- **Docker Desktop** (includes Docker Compose)
+- **Linux environment** (tested on Ubuntu/Debian) or WSL2 on Windows
 
-Run the `install.sh` script to install the following tools:
-  - **bloodhound-python**: Collects Active Directory data.
-  - **bloodhound-automation**: Automates deployment of BloodHoundCE.
-  - **AD-miner**: Runs analysis and generates an AD miner report.
-  - **GoodHound**: Runs GoodHound analysis.
-  - **Ransomulator**: Runs the ransomulator script.
-  - **BloodHound QuickWin**: Runs the BloodHoundQuickWin script.
-  - **PlumHound**: Runs PlumHound tasks and short path analyses.
+Run the `install.sh` script to install the required tools:
+  - **bloodhound-cli**: BloodHound CE command-line interface
+  - **AD-miner**: Generates comprehensive AD security reports
+  - **GoodHound**: Identifies high-value attack paths
+  - **Ransomulator**: Simulates ransomware attack paths
+  - **BloodHound QuickWin**: Quick analysis script
+  - **PlumHound**: Task-based analysis tool
 
 ```bash
 chmod +x ./install.sh
 ./install.sh
 ```
+
 ## Usage
 
-Run the script with one or more of the modules as detailed below. Make sure to have the necessary permissions to execute Docker or run Neo4j.
+Run the script with one or more modules as detailed below:
 
 ```bash
 chmod +x ./BloodHoundAnalyzer.sh
@@ -38,116 +48,204 @@ chmod +x ./BloodHoundAnalyzer.sh
 ### Options
 
 - `-d, --domain DOMAIN`  
-  Specify the AD domain to analyze (required for BloodHoundCE and for Collection).
-
-- `-u, --username`  
-  Username (required for Collection only).
-
-- `-p, --password`  
-  Password - NTLM authentication (required for Collection only).
-
-- `-H, --hash`  
-  LM:NT - NTLM authentication (alternative to password, used for Collection only).
-
-- `-K, --kerb`  
-  Location to Kerberos ticket './krb5cc_ticket' - Kerberos authentication (alternative to password, used for Collection only).
-
-- `-A, --aes`  
-  AES Key - Kerberos authentication (alternative to password, used for Collection only).
-
-- `--dc`  
-  IP Address of Target Domain Controller (required for Collection only).
+  Specify the AD domain to analyze (required for most operations).  
+  Containers will be named: `<domain>-graph-db-1`, `<domain>-app-db-1`, `<domain>-bloodhound-1`
 
 - `-o, --output OUTPUT_DIR`  
-  Specify the directory where analysis results will be saved. Defaults to the current directory.
+  Specify the directory where analysis results will be saved.  
+  Default: `/opt/BA_output`
 
 - `-D, --data DATA_PATH`  
-  Specify the path to the BloodHound ZIP file to import.
+  Specify the path to BloodHound data:
+  - `.zip` file (SharpHound/AzureHound collection)
+  - `.json` file (single collection file)
+  - Folder containing `.json` files
 
 - `-M, --modules MODULES`  
-  Comma separated modules to execute between:  
-    - **collect:** Run bloodHound-python to collect Active Directory data.  
-    - **list** : List available projects (only for BloodHoundCE).  
-    - **start** : Start BloodHoundCE containers or neo4j.  
-    - **run** : Run BloodHound GUI or Firefox with BloodHoundCE webpage.  
-    - **import** : Import BloodHound data into the neo4j database.  
-    - **analyze** : Run analysis tools (AD-miner, GoodHound, Ransomulator, PlumHound) on the imported data.  
-    - **stop** : Stop BloodHoundCE containers or neo4j.  
-    - **clean** : Stop and delete BloodHoundCE containers (only for BloodHoundCE).  
+  Comma-separated modules to execute:
+  - **list**: List all deployed BloodHound projects and their status
+  - **start**: Start BloodHound CE containers for the specified domain
+  - **import**: Import BloodHound data (automatically starts containers if needed)
+  - **analyze**: Run analysis tools (AD-miner, GoodHound, Ransomulator, BloodHound QuickWin)
+  - **stop**: Stop BloodHound CE containers (preserves data volumes)
+  - **clean**: Remove BloodHound CE containers, volumes, and project data
 
-- `--old`  
-  Use the old version of BloodHound.
+- `--bolt-port PORT`  
+  Specify Neo4j Bolt port (default: 7687)
 
-- `--oldpass`  
-  Specify Neo4j password for the old version of BloodHound.
+- `--neo4j-port PORT`  
+  Specify Neo4j HTTP port (default: 7474)
+
+- `--web-port PORT`  
+  Specify BloodHound web interface port (default: 7080)
 
 - `-h, --help`  
-  Display the help message.
+  Display the help message
 
 ## Examples
 
-### Collect Active Directory data (requires credentials and access to AD environment)
-
-```bash
-./BloodHoundAnalyzer.sh -M collect -d example.com -u user -p password
-```
-
-### List deployed BloodHoundCE projects
+### List All Deployed Projects
 
 ```bash
 ./BloodHoundAnalyzer.sh -M list
 ```
 
-### Start BloodHoundCE containers or old BloodHound's Neo4j
+### Deploy BloodHound CE for a Domain
 
 ```bash
-./BloodHoundAnalyzer.sh -M start -d example.com
-./BloodHoundAnalyzer.sh -M start --old
+./BloodHoundAnalyzer.sh -M start -d contoso.local
 ```
 
-### Open Firefox with BloodHoundCE web page or run old BloodHound GUI
+Access at: `http://127.0.0.1:7080/ui/login`
+- Username: `admin`
+- Password: `BloodHound2025!@` (automatically set)
+
+### Deploy with Custom Ports
+
 ```bash
-./BloodHoundAnalyzer.sh -M run
-./BloodHoundAnalyzer.sh -M run --old
+./BloodHoundAnalyzer.sh -M start -d contoso.local --bolt-port 7688 --neo4j-port 7475 --web-port 7081
 ```
 
-### Start BloodHound, Import Data, and Run Analysis
+### Import BloodHound Data
 
+Import a ZIP file:
 ```bash
-./BloodHoundAnalyzer.sh -M import,analyze -d example.com --data /path/to/bloodhound/data.zip -o /path/to/output
-./BloodHoundAnalyzer.sh -M import,analyze --data /path/to/bloodhound/data.zip --old -o /path/to/output
+./BloodHoundAnalyzer.sh -M import -d contoso.local -D /path/to/bloodhound_data.zip
 ```
 
-### Start BloodHound, and Run Analysis on previously imported data
-
+Import JSON files from a folder:
 ```bash
-./BloodHoundAnalyzer.sh -M analyze -d example.com -o /path/to/output
-./BloodHoundAnalyzer.sh -M analyze --old -o /path/to/output
+./BloodHoundAnalyzer.sh -M import -d contoso.local -D /path/to/json_folder/
 ```
 
-### Stop BloodHoundCE containers or old BloodHound's Neo4j 
+### Run Analysis Tools
 
 ```bash
-./BloodHoundAnalyzer.sh -M stop -d example.com
-./BloodHoundAnalyzer.sh -M stop --old
+./BloodHoundAnalyzer.sh -M analyze -d contoso.local -o /opt/reports
 ```
 
-### Clean up BloodHoundCE Containers
+This will generate:
+- AD-miner HTML report in `ADMinerReport_contoso.local/`
+- GoodHound analysis in `GoodHound_contoso.local/`
+- BloodHound QuickWin output in `bhqc_contoso.local.txt`
+- Ransomulator results in `ransomulator_contoso.local.txt`
+
+### Complete Workflow (Import + Analyze)
 
 ```bash
-./BloodHoundAnalyzer.sh -M clean -d example.com
+./BloodHoundAnalyzer.sh -M import,analyze -d contoso.local -D /path/to/data.zip -o /opt/reports
+```
+
+### Stop BloodHound CE Containers
+
+```bash
+./BloodHoundAnalyzer.sh -M stop -d contoso.local
+```
+
+Note: Volumes are preserved for restart
+
+### Clean Up Deployment
+
+```bash
+./BloodHoundAnalyzer.sh -M clean -d contoso.local
+```
+
+Warning: This removes containers, volumes, and project data permanently!
+
+### Multiple Domains (Isolated Instances)
+
+Deploy and manage multiple domains simultaneously:
+
+```bash
+# Deploy first domain
+./BloodHoundAnalyzer.sh -M start -d corp.local --web-port 7080
+
+# Deploy second domain with different ports
+./BloodHoundAnalyzer.sh -M start -d dev.local --web-port 7081 --bolt-port 7688 --neo4j-port 7475
+
+# List all projects
+./BloodHoundAnalyzer.sh -M list
+```
+
+## Directory Structure
+
+```
+/opt/BA_tools/
+├── bloodhound-cli           # BloodHound CE CLI
+├── .venv/                   # Python virtual environment
+├── bhqc.py                  # BloodHound QuickWin script
+├── ransomulator.py          # Ransomulator script
+└── projects/
+    ├── contoso.local/       # Project directory per domain
+    │   ├── docker-compose.yml
+    │   └── .env
+    └── corp.local/
+        ├── docker-compose.yml
+        └── .env
+
+/opt/BA_output/              # Analysis output directory
+├── contoso.local/
+│   ├── ADMinerReport_contoso.local/
+│   ├── GoodHound_contoso.local/
+│   ├── bhqc_contoso.local.txt
+│   └── ransomulator_contoso.local.txt
+└── corp.local/
+    └── ...
+```
+
+## Default Credentials
+
+- **BloodHound CE Web Interface**:
+  - URL: `http://127.0.0.1:7080/ui/login`
+  - Username: `admin`
+  - Password: `BloodHound2025!@` (automatically configured)
+
+- **Neo4j Database** (for analysis tools):
+  - Bolt: `bolt://127.0.0.1:7687`
+  - Username: `neo4j`
+  - Password: `bloodhoundcommunityedition`
+
+
+### Containers Won't Start
+
+```bash
+# Check Docker is running
+docker ps
+
+# Check container logs
+docker logs <domain>-bloodhound-1
+
+# Clean and restart
+./BloodHoundAnalyzer.sh -M clean -d domain.local
+./BloodHoundAnalyzer.sh -M start -d domain.local
+```
+
+### Import Fails
+
+```bash
+# Check API accessibility
+curl http://127.0.0.1:7080/api/version
+
+# Check container logs
+docker logs <domain>-bloodhound-1
+
+# Verify data file format (should be .zip or .json)
 ```
 
 ## License
 
-This project is licensed under the terms of the MIT license. 
+This project is licensed under the terms of the MIT license.
 
 ## Acknowledgments
+
 BloodHoundAnalyzer uses the following tools:
-- https://github.com/dirkjanm/BloodHound.py
-- https://github.com/Tanguy-Boisset/bloodhound-automation
-- https://github.com/Mazars-Tech/AD_Miner
-- https://github.com/PlumHound/PlumHound
-- https://github.com/idnahacks/GoodHound
-- https://github.com/zeronetworks/BloodHound-Tools/blob/main/Ransomulator
-- https://github.com/kaluche/bloodhound-quickwin
+- [BloodHound CE](https://github.com/SpecterOps/BloodHound) - Active Directory security tool
+- [AD_Miner](https://github.com/Mazars-Tech/AD_Miner) - AD security analysis and reporting
+- [GoodHound](https://github.com/idnahacks/GoodHound) - Attack path analysis
+- [Ransomulator](https://github.com/zeronetworks/BloodHound-Tools/tree/main/Ransomulator) - Ransomware simulation
+- [BloodHound QuickWin](https://github.com/kaluche/bloodhound-quickwin) - Quick analysis script
+- [PlumHound](https://github.com/PlumHound/PlumHound) - Task-based reporting
+
+## Author
+
+**lefayjey** - [GitHub](https://github.com/lefayjey/BloodHoundAnalyzer)
