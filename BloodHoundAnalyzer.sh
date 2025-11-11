@@ -39,6 +39,7 @@ bhd_data=""
 # Module flags
 list_bool=false
 start_bool=false
+collect_bool=false
 import_bool=false
 analyze_bool=false
 stop_bool=false
@@ -52,7 +53,7 @@ print_banner() {
       / \/  \ | (_) | (_) | (_| / __  / (_) | |_| | | | | (_| /  _  \ | | | (_| | | |_| |/ /  __/ |   
       \_____/_|\___/ \___/ \__,_\/ /_/ \___/ \__,_|_| |_|\__,_\_/ \_/_| |_|\__,_|_|\__, /___\___|_|   
                                                                                    |___/              
-      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 1.0 ${NC}
+      ${BLUE}BloodHoundAnalyzer: ${CYAN}version 1.1 ${NC}
       https://github.com/lefayjey/BloodHoundAnalyzer
       ${BLUE}Author: ${CYAN}lefayjey${NC}
 "
@@ -63,9 +64,16 @@ print_help() {
     echo -e "${YELLOW}Parameters${NC}"
     echo -e "-d/--domain DOMAIN          Specify the AD domain to analyze (required for BloodHound CE)."
     echo -e "                            Containers will be named: <domain>-graph-db-1, <domain>-app-db-1, <domain>-bloodhound-1"
+    echo -e "-u/--username               Username (required for Collection only)."
+    echo -e "-p/--password               Password - NTLM authentication (required for Collection only)."
+    echo -e "-H/--hash                   LM:NT - NTLM authentication (required for Collection only)."
+    echo -e "-K/--kerb                   Location to Kerberos ticket './krb5cc_ticket' - Kerberos authentication (required for Collection only)."
+    echo -e "-A/--aes                    AES Key - Kerberos authentication (required for Collection only)."
+    echo -e "--dc                        IP Address of Target Domain Controller (required for Collection only)."
     echo -e "-o/--output OUTPUT_DIR      Specify the directory where analysis results will be saved."
     echo -e "-D/--data DATA_PATH         Specify the path to BloodHound data (accepts .zip file, .json file, or folder containing JSON files)"
     echo -e "-M/--module MODULES         Comma separated modules to execute between: list, start, import, analyze, stop, clean"
+    echo -e "  ${YELLOW}collect${NC}:  Run bloodHound-ce to collect Active Directory data."
     echo -e "  ${YELLOW}list${NC}:     List deployed BloodHound projects and their containers."
     echo -e "  ${YELLOW}start${NC}:    Start BloodHound CE containers for the specified domain (persists containers/volumes)."
     echo -e "  ${YELLOW}import${NC}:   Import BloodHound data. Automatically starts containers if not running."
@@ -88,6 +96,31 @@ while test $# -gt 0; do
     case $1 in
         -d | --domain)
             domain="${2}"
+            shift
+            ;;
+        -u | --username)
+            username="${2}"
+            shift
+            ;;
+        -p | --password)
+            creds="-p '${2}' --auth-method ntlm"
+            shift
+            ;;
+        -H | --hash)
+            creds="--hashes '${2}' --auth-method ntlm"
+            shift
+            ;;
+        -K | --kerb)
+            export KRB5CCNAME="${2}"
+            creds="-k -no-pass -p '' --auth-method kerberos"
+            shift
+            ;;
+        -A | --aes)
+            creds="-aesKey ${2} --auth-method kerberos"
+            shift
+            ;;
+        --dc)
+            dc="${2}"
             shift
             ;;
         -o | --output)
@@ -463,6 +496,13 @@ for m in ${modules//,/ }; do
         list)
             list_bool=true
             ;;
+        collect)
+            if [ -z "${domain}" ] || [ -z "${username}" ] || [ -z "${creds}" ] || [ -z "${dc}" ]; then
+                echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain, DC IP, username or credentials not specified"
+                exit 1
+            fi
+            collect_bool=true
+            ;;
         start)
             if [ -z "${domain}" ]; then
                 echo -e "${RED}[BloodHoundAnalyzer]${NC} Domain not specified"
@@ -514,10 +554,10 @@ done
 
 print_banner
 
-# Check if bloodhound-cli exists
-if [ ! -f "$bloodhound_cli" ]; then
-    echo -e "${RED}[ERROR]${NC} bloodhound-cli not found at ${bloodhound_cli}"
-    echo -e "${YELLOW}[INFO]${NC} Please install it from: https://github.com/SpecterOps/BloodHound"
+# Check if bloodhound-cli exists and is executable
+if [ ! -x "$bloodhound_cli" ]; then
+    echo -e "${RED}[ERROR]${NC} bloodhound-cli not found or not executable at ${bloodhound_cli}"
+    echo -e "${YELLOW}[INFO]${NC} Please run ./install.sh or install from: https://github.com/SpecterOps/BloodHound"
     exit 1
 fi
 
@@ -606,6 +646,7 @@ if [ "${start_bool}" == true ]; then
     
     if [ "$running" -gt 0 ]; then
         echo -e "${YELLOW}[START]${NC} BloodHound CE containers already running for ${domain}"
+        echo -e ""
     else
         # Check port availability
         if ! check_neo4j_ports; then
@@ -613,7 +654,7 @@ if [ "${start_bool}" == true ]; then
             exit 1
         else
 
-        
+        # Create project directory
         mkdir -p "${proj_dir}"
 
         echo ""
@@ -704,6 +745,29 @@ EOF
     fi
 fi
 
+# Collect data
+if [ "${collect_bool}" == true ]; then
+    echo -e "${GREEN}[BloodHoundAnalyzer COLLECT]${NC} Running BloodHound Collection"
+    if [ ! -f "$(which bloodhound-ce-python)" ]; then
+        echo -e "${YELLOW}[COLLECT]${NC} bloodhound-ce-python script not found, skipping bloodhound-ce-python collection"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install bloodhound-ce-python"
+    else
+        # Create project directory
+        mkdir -p "${proj_out_dir}"
+        cd "${proj_out_dir}" || exit
+        echo -e "${CYAN}[CMD]${NC} bloodhound-ce-python -d \"${domain}\" \"-u ${username}\\@${domain}\" \"${creds}\" -c all,LoggedOn -ns \"${dc}\" --dns-timeout 5 --dns-tcp --zip"
+        eval bloodhound-ce-python -d "${domain}" "-u ${username}\\@${domain}" "${creds}" -c all,LoggedOn -ns "${dc}" --dns-timeout 5 --dns-tcp --zip
+        bhd_data_new="$(find "${proj_out_dir}" -type f -name '*_bloodhound.zip' -print -quit)"
+        if [ -n "${bhd_data_new}" ]; then
+            echo -e "${GREEN}[COLLECT]${NC} BloodHound Data collected successfully"
+        else
+            echo -e "${RED}[COLLECT]${NC} Error collecting BloodHound Data"
+        fi
+        cd "${current_dir}" || exit
+        echo -e ""
+    fi
+fi
+
 # Import data
 if [ "${import_bool}" == true ]; then
     if [ -z "${bhd_data}" ]; then
@@ -744,6 +808,13 @@ fi
 # Run analysis tools
 if [ "${analyze_bool}" == true ]; then
 
+    # Validate Python venv exists
+    if [ ! -x "${python3}" ]; then
+        echo -e "${RED}[ANALYZE]${NC} Python virtual environment not found at ${python3}"
+        echo -e "${YELLOW}[INFO]${NC} Please run ./install.sh to set up the environment"
+        exit 1
+    fi
+
     mkdir -p "${proj_out_dir}"
     cd "${proj_out_dir}" || exit
     
@@ -753,33 +824,89 @@ if [ "${analyze_bool}" == true ]; then
     
     # AD-miner
     echo -e "${GREEN}[ANALYZE]${NC} Running AD-miner"
-    echo -e "${CYAN}[CMD]${NC} AD-miner -cf ADMinerReport_${domain} -b bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} --cluster 127.0.0.1:${bolt_port}:32"
-    AD-miner -cf ADMinerReport"_${domain}" -b bolt://127.0.0.1:"${bolt_port}" -u neo4j -p "${neo4j_password}" --cluster 127.0.0.1:"${bolt_port}":32
-    rm -rf "${proj_out_dir}"/cache_neo4j 2>/dev/null
-    mv render_ADMinerReport"_${domain}" ADMinerReport"_${domain}" 2>/dev/null
-    echo -e ""
-    
+    if [ ! -f "$(which AD-miner)" ]; then
+        echo -e "${YELLOW}[ANALYZE]${NC} AD-miner script not found, skipping AD-miner analysis"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install AD-miner"
+        echo -e ""
+    else
+        echo -e "${CYAN}[CMD]${NC} AD-miner -cf ADMinerReport_${domain} -b bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} --cluster 127.0.0.1:${bolt_port}:32"
+        AD-miner -cf ADMinerReport"_${domain}" -b bolt://127.0.0.1:"${bolt_port}" -u neo4j -p "${neo4j_password}" --cluster 127.0.0.1:"${bolt_port}":32
+        rm -rf "${proj_out_dir}"/cache_neo4j 2>/dev/null
+        mv render_ADMinerReport"_${domain}" ADMinerReport"_${domain}" 2>/dev/null
+        echo -e ""
+    fi
+
     # GoodHound
     echo -e "${GREEN}[ANALYZE]${NC} Running GoodHound"
-    mkdir -p "${proj_out_dir}/GoodHound_${domain}"
-    echo -e "${CYAN}[CMD]${NC} GoodHound -s bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} -d ${proj_out_dir}/GoodHound_${domain} --db-skip --patch41"
-    GoodHound -s bolt://127.0.0.1:"${bolt_port}" -u neo4j -p "${neo4j_password}" -d "${proj_out_dir}/GoodHound_${domain}" --db-skip --patch41
-    echo -e ""
-    
+    if [ ! -f "$(which GoodHound)" ]; then
+        echo -e "${YELLOW}[ANALYZE]${NC} GoodHound script not found, skipping GoodHound analysis"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install GoodHound"
+        echo -e ""
+    else
+        mkdir -p "${proj_out_dir}/GoodHound_${domain}"
+        echo -e "${CYAN}[CMD]${NC} GoodHound -s bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} -d ${proj_out_dir}/GoodHound_${domain} --db-skip --patch41"
+        GoodHound -s bolt://127.0.0.1:"${bolt_port}" -u neo4j -p "${neo4j_password}" -d "${proj_out_dir}/GoodHound_${domain}" --db-skip --patch41
+        echo -e ""
+    fi
+
     # BloodHoundQuickWin
     echo -e "${GREEN}[ANALYZE]${NC} Running BloodHoundQuickWin"
-    echo ""
-    echo "[*] Running BloodHound QuickWin..."
-    echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/bhqc.py -u neo4j -p ${neo4j_password} -d ${domain} --heavy -b bolt://127.0.0.1:${bolt_port}"
-    ${python3} "${tools_dir}/bhqc.py" -u neo4j -p "${neo4j_password}" -d "${domain}" --heavy -b bolt://127.0.0.1:"${bolt_port}" | tee "${proj_out_dir}/bhqc_${domain}.txt"
-    echo -e ""
-    
+    if [ ! -f "${tools_dir}/bhqc.py" ]; then
+        echo -e "${YELLOW}[ANALYZE]${NC} BloodHoundQuickWin script not found, skipping BloodHoundQuickWin analysis"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install BloodHoundQuickWin"
+        echo -e ""
+    else
+        echo "[*] Running BloodHound QuickWin..."
+        echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/bhqc.py -u neo4j -p ${neo4j_password} -d ${domain} --heavy -b bolt://127.0.0.1:${bolt_port}"
+        ${python3} "${tools_dir}/bhqc.py" -u neo4j -p "${neo4j_password}" -d "${domain}" --heavy -b bolt://127.0.0.1:"${bolt_port}" | tee "${proj_out_dir}/bhqc_${domain}.txt"
+        echo -e ""
+    fi
+
     # Ransomulator
     echo -e "${GREEN}[ANALYZE]${NC} Running Ransomulator"
-    echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/ransomulator.py -l bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} -w 12 -o ${proj_out_dir}/ransomulator_${domain}.txt"
-    ${python3} "${tools_dir}/ransomulator.py" -l bolt://127.0.0.1:"${bolt_port}" -u neo4j -p "${neo4j_password}" -w 12 -o"${proj_out_dir}/ransomulator_${domain}.txt"
-    echo -e ""
-    
+    if [ ! -f "${tools_dir}/ransomulator.py" ]; then
+        echo -e "${YELLOW}[ANALYZE]${NC} Ransomulator directoscriptry not found, skipping Ransomulator analysis"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install Ransomulator"
+        echo -e ""
+    else
+        echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/ransomulator.py -l bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} -w 12 -o ${proj_out_dir}/ransomulator_${domain}.csv"
+        ${python3} "${tools_dir}/ransomulator.py" -l bolt://127.0.0.1:"${bolt_port}" -u neo4j -p "${neo4j_password}" -w 12 -o"${proj_out_dir}/ransomulator_${domain}.csv"
+        echo -e ""
+    fi
+
+    # PlumHound
+    echo -e "${GREEN}[ANALYZE]${NC} Running PlumHound"
+    if [ ! -d "${tools_dir}/PlumHound-master" ]; then
+        echo -e "${YELLOW}[ANALYZE]${NC} PlumHound directory not found, skipping PlumHound analysis"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install PlumHound"
+        echo -e ""
+    else
+        mkdir -p "${proj_out_dir}/PlumHound_${domain}"
+        cd "${tools_dir}/PlumHound-master" || exit
+        echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/PlumHound-master/PlumHound.py -x tasks/default.tasks -s bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} -v 0 --op ${proj_out_dir}/PlumHound_${domain}"
+        ${python3} ${tools_dir}/PlumHound-master/PlumHound.py -x tasks/default.tasks -s "bolt://127.0.0.1:${bolt_port}" -u neo4j -p "${neo4j_password}" -v 0 --op "${proj_out_dir}/PlumHound_${domain}"
+        echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/PlumHound-master/PlumHound.py -bp short 5 -s bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} --op ${proj_out_dir}/PlumHound_${domain}"
+        ${python3} ${tools_dir}/PlumHound-master/PlumHound.py -bp short 5 -s "bolt://127.0.0.1:${bolt_port}" -u neo4j -p "${neo4j_password}" --op "${proj_out_dir}/PlumHound_${domain}"
+        echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/PlumHound-master/PlumHound.py -bp all 5 -s bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} --op ${proj_out_dir}/PlumHound_${domain}"
+        ${python3} ${tools_dir}/PlumHound-master/PlumHound.py -bp all 5 -s "bolt://127.0.0.1:${bolt_port}" -u neo4j -p "${neo4j_password}" --op "${proj_out_dir}/PlumHound_${domain}"
+        echo -e ""
+    fi
+
+    # ad-recon
+    if [ ! -d "${tools_dir}/ad-recon-main" ]; then
+        echo -e "${YELLOW}[ANALYZE]${NC} ad-recon directory not found, skipping ad-recon analysis"
+        echo -e "${YELLOW}[INFO]${NC} Run ./install.sh to install ad-recon"
+        echo -e ""
+    else
+        echo -e "${GREEN}[ANALYZE]${NC} Running ad-recon"
+        mkdir -p "${proj_out_dir}/ad-recon_${domain}"
+        cd "${tools_dir}/ad-recon-main" || exit
+        echo -e "${CYAN}[CMD]${NC} ${python3} ${tools_dir}/ad-recon-main/ad_recon.py --pathing --transitive -U bolt://127.0.0.1:${bolt_port} -u neo4j -p ${neo4j_password} -d neo4j"
+        ${python3} ${tools_dir}/ad-recon-main/ad_recon.py --pathing --transitive -U "bolt://127.0.0.1:${bolt_port}" -u neo4j -p "${neo4j_password}" -d neo4j
+        mv "${tools_dir}/ad-recon-main/output/"* "${proj_out_dir}/ad-recon_${domain}/"
+        echo -e ""
+    fi
+
     cd "${current_dir}" || exit
 fi
 

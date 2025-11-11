@@ -7,12 +7,13 @@ BloodHoundAnalyzer is a bash script designed to automate the deployment, data im
 
 ## Features
 
+- **Data Collection**: Includes bloodhound-ce-python for AD data collection
 - **Multi-Domain Support**: Deploy separate BloodHound CE instances for different domains
 - **Automated Container Management**: Start, stop, and clean BloodHound CE containers with custom naming
 - **Custom Port Configuration**: Configure custom ports for Neo4j and BloodHound web interface
 - **Automatic Password Management**: Automatically reset admin password to a standard password
 - **Multiple Data Import Formats**: Import .zip files, .json files, or folders containing JSON files
-- **Integrated Analysis Tools**: Run AD-miner, GoodHound, Ransomulator, and BloodHound QuickWin
+- **Integrated Analysis Tools**: Run AD-miner, GoodHound, Ransomulator, PlumHound, ad-recon, and BloodHound QuickWin
 - **Project Listing**: View all deployed BloodHound projects and their status
 
 ## Prerequisites
@@ -20,18 +21,22 @@ BloodHoundAnalyzer is a bash script designed to automate the deployment, data im
 Before using BloodHoundAnalyzer, ensure you have the following installed:
 
 - **Python 3** with venv support
-- **Docker Desktop** (includes Docker Compose)
 - **Linux environment** (tested on Ubuntu/Debian) or WSL2 on Windows
 
 Run the `install.sh` script to install the required tools:
+  - **bloodhound-ce-python**: Python-based AD data collector for BloodHound CE
   - **bloodhound-cli**: BloodHound CE command-line interface
   - **AD-miner**: Generates comprehensive AD security reports
   - **GoodHound**: Identifies high-value attack paths
   - **Ransomulator**: Simulates ransomware attack paths
   - **BloodHound QuickWin**: Quick analysis script
   - **PlumHound**: Task-based analysis tool
+  - **ad-recon**: AD pathing and transitive rights analysis
 
 ```bash
+# Install BloodHoundAnalyzer
+git clone https://github.com/lefayjey/BloodHoundAnalyzer
+cd BloodHoundAnalyzer
 chmod +x ./install.sh
 ./install.sh
 ```
@@ -57,7 +62,7 @@ chmod +x ./BloodHoundAnalyzer.sh
 
 - `-D, --data DATA_PATH`  
   Specify the path to BloodHound data:
-  - `.zip` file (SharpHound/AzureHound collection)
+  - `.zip` file (SharpHound collection)
   - `.json` file (single collection file)
   - Folder containing `.json` files
 
@@ -129,6 +134,8 @@ This will generate:
 - GoodHound analysis in `GoodHound_contoso.local/`
 - BloodHound QuickWin output in `bhqc_contoso.local.txt`
 - Ransomulator results in `ransomulator_contoso.local.txt`
+- PlumHound reports in `PlumHound_contoso.local/`
+- ad-recon analysis in `ad-recon_contoso.local/`
 
 ### Complete Workflow (Import + Analyze)
 
@@ -186,9 +193,11 @@ Deploy and manage multiple domains simultaneously:
 /opt/BA_output/              # Analysis output directory
 ├── contoso.local/
 │   ├── ADMinerReport_contoso.local/
+│   ├── ad-recon_contoso.local/
 │   ├── GoodHound_contoso.local/
+│   ├── PlumHound_contoso.local/
 │   ├── bhqc_contoso.local.txt
-│   └── ransomulator_contoso.local.txt
+│   └── ransomulator_contoso.local.csv
 └── corp.local/
     └── ...
 ```
@@ -245,6 +254,7 @@ BloodHoundAnalyzer uses the following tools:
 - [Ransomulator](https://github.com/zeronetworks/BloodHound-Tools/tree/main/Ransomulator) - Ransomware simulation
 - [BloodHound QuickWin](https://github.com/kaluche/bloodhound-quickwin) - Quick analysis script
 - [PlumHound](https://github.com/PlumHound/PlumHound) - Task-based reporting
+- [ad-recon](https://github.com/tid35/ad-recon) - AD pathing and transitive rights analysis
 
 ## Author
 
