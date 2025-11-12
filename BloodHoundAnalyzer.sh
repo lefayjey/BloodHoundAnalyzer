@@ -15,7 +15,7 @@ NC='\033[0m'
 tools_dir="/opt/BA_tools"
 bloodhound_cli="${tools_dir}/bloodhound-cli"
 current_dir=$(pwd)
-output_dir="/opt/BA_output"
+output_dir=${current_dir}
 python3="${tools_dir}/.venv/bin/python3"
 
 # Ports
@@ -565,7 +565,7 @@ fi
 if [ -n "${domain}" ]; then
     normalized_domain=$(echo "$domain" | tr '.' '-' | tr '[:upper:]' '[:lower:]')
     proj_dir="${tools_dir}/projects/${domain}"
-    proj_out_dir="${output_dir}/${domain}"
+    proj_out_dir="${output_dir}/BA_${domain}"
 else
     # Domain is required for start, import, analyze, stop, clean modules
     if [ "${start_bool}" == true ] || [ "${import_bool}" == true ] || [ "${analyze_bool}" == true ] || [ "${stop_bool}" == true ] || [ "${clean_bool}" == true ]; then

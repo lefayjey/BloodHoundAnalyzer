@@ -1,12 +1,9 @@
 #!/bin/bash
 
 tools_dir="/opt/BA_tools"
-out_dir="/opt/BA_output"
 
 sudo mkdir "${tools_dir}" 2>/dev/null
-sudo mkdir "${out_dir}" 2>/dev/null
 sudo chown -R "$(whoami)":"$(whoami)" "${tools_dir}"
-sudo chown -R "$(whoami)":"$(whoami)" "${out_dir}"
 
 pipx_install_or_upgrade() {
     local url="$1"
